@@ -1,0 +1,19 @@
+{
+    "name": "user/example",
+    "description": "example",
+    "type": "packege",
+    "autoload": {
+        "psr-4": {
+            "Project\\": "Project"
+        }
+    },
+    "authors": [
+        {
+            "name": "Morody",
+            "email": "adel-ufa@mail.ru"
+        }
+    ],
+    "require": {
+        "symfony/process": "^7.0"
+    }
+}
