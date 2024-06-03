@@ -8,12 +8,14 @@ class Bakery{
     public int $number_id_shmop;
     public int $choosing_id_shmop;
     public int $state_id_shmop;
+    public int $num_proc;
 
-    public function __construct($number_id_shmop, $choosing_id_shmop, $state_id_shmop)
+    public function __construct($number_id_shmop, $choosing_id_shmop, $state_id_shmop, $num_proc)
     {
         $this->number_id_shmop = $number_id_shmop;
         $this->choosing_id_shmop = $choosing_id_shmop;
         $this->state_id_shmop = $state_id_shmop;
+        $this->num_proc = $num_proc;
     }
 
     /*
@@ -70,7 +72,7 @@ class Bakery{
         * процессы, которые имеют значения в массиве 'number' - 0 и не имеют наименьшего значения, ожидают своей очереди
         * 
         */
-        for ($i = 0; $i < 3; $i++){
+        for ($i = 0; $i < $this->num_proc; $i++){
             while(filter_var($this->readFromMem($this->choosing_id_shmop)[$i], FILTER_VALIDATE_BOOLEAN)){}
             while(intval($this->readFromMem($this->number_id_shmop)[$i]) !== 0
                     && $this->compare(intval($this->readFromMem($this->number_id_shmop)[$i]), $i, intval($this->readFromMem($this->number_id_shmop)[$process_id]), $process_id)){}
@@ -92,48 +94,56 @@ class Bakery{
 
 // симуляция действий процесса в критической секции
 function criticalSection(int $shm_counter, int $process_id)
-    {
-        $id_read_counter = shmop_open($shm_counter, 'w', 0644, 5);
-
-        $shared_counter = intval(rtrim(shmop_read($id_read_counter, 0, 5), "\0 ")); // читается счетчик из распр. памяти
-        $len_str = strlen(rtrim(shmop_read($id_read_counter, 0, 5), "\0 ")); // вычисляется его длина строки перед изменением
-
-        $old_value = $shared_counter;
-        $new_value = $old_value + 1; // увеличиваем счетчик 
-        $shared_counter = $new_value;
-
-        shmop_write($id_read_counter, str_pad(strval($shared_counter), 5 - $len_str), 0); // записываем обновленный счетчик в распр. память
-        
-        echo "Process {$process_id} is working..." . PHP_EOL;       // симулируем работу процесса
-        sleep(rand(0, 10));                                         //     
-        echo "Process {$process_id} finished working!" . PHP_EOL;   //         
-
-        assert($shared_counter == $new_value, "Mutual exclusion violated"); // проверка условия взаимоисключения процессов из крит. секции 
-    }
+{
+    $id_read_counter = shmop_open($shm_counter, 'w', 0644, 5);
+    $shared_counter = intval(rtrim(shmop_read($id_read_counter, 0, 5), "\0 ")); // читается счетчик из распр. памяти
+    $len_str = strlen(rtrim(shmop_read($id_read_counter, 0, 5), "\0 ")); // вычисляется его длина строки перед изменением
+    $old_value = $shared_counter;
+    $new_value = $old_value + 1; // увеличиваем счетчик 
+    $shared_counter = $new_value;
+    shmop_write($id_read_counter, str_pad(strval($shared_counter), 5 - $len_str), 0); // записываем обновленный счетчик в распр. память
+    
+    echo "Process {$process_id} is working..." . PHP_EOL;       // симулируем работу процесса
+    sleep(rand(0, 10));                                         //     
+    echo "Process {$process_id} finished working!" . PHP_EOL;   //         
+    assert($shared_counter == $new_value, "Mutual exclusion violated"); // проверка условия взаимоисключения процессов из крит. секции 
+}
 
 # вывод состояния всех процессов на данный момент
 function generateASCII(Bakery $lock): string
-    {
-        $state_symbols = ['R' => 'Requesting', 'C' => 'In Critical Section', '_' => 'Waiting'];
-        $ascii_art = PHP_EOL . 'System State: ' . PHP_EOL;
-        for ($i = 0; $i < 3; $i++){
-            $ascii_art .= "Process {$i}: {$state_symbols[$lock->readFromMem($_SERVER['id_shmop_state'])[$i]]}" . PHP_EOL;
-        }
-        return $ascii_art;
+{
+    $num_proc = $_SERVER['num_proc']; // from Multiprocessing class
+
+    $state_symbols = ['R' => 'Requesting', 'C' => 'In Critical Section', '_' => 'Waiting'];
+    $ascii_art = PHP_EOL . 'System State: ' . PHP_EOL;
+
+    for ($i = 0; $i < $num_proc; $i++){
+        $ascii_art .= "Process {$i}: {$state_symbols[$lock->readFromMem($_SERVER['id_shmop_state'])[$i]]}" . PHP_EOL;
     }
+
+    return $ascii_art;
+}
 
 # точка распределения задачи на процессы
 function processFunction(Bakery $lock, int $shm_counter, int $process_id)
-    {
-        for ($i = 0; $i < 5; $i++){ # 5 итераций на каждый процесс
-            $lock->lock($process_id); # определяет какой процесс попадет в критическую секцию, блокировка остальных процессов
-            echo generateASCII($lock) . PHP_EOL; # вывод состояние процессов на данный момент
-            criticalSection($shm_counter, $process_id); # после выхода из блокировки процесс получает возможность попасть в крит. секцию
-            $lock->unlock($process_id); # после выхода из крит. секции значения 'choosing' и 'number' обнуляется
-            echo generateASCII($lock) . PHP_EOL;  # вывод состояние процессов на данный момент
-            sleep(1); # пауза между итерациями
-        }
+{
+    $iter_per_proc = $_SERVER['iter_per_proc'];
+
+    for ($i = 0; $i < $iter_per_proc; $i++){ # 5 итераций на каждый процесс
+        
+        $lock->lock($process_id); # определяет какой процесс попадет в критическую секцию, блокировка остальных процессов
+
+        echo generateASCII($lock) . PHP_EOL; # вывод состояние процессов на данный момент
+
+        criticalSection($shm_counter, $process_id); # после выхода из блокировки процесс получает возможность попасть в крит. секцию
+
+        $lock->unlock($process_id); # после выхода из крит. секции значения 'choosing' и 'number' обнуляется
+
+        echo generateASCII($lock) . PHP_EOL;  # вывод состояние процессов на данный момент
+
+        sleep(1); # пауза между итерациями
     }
+}
 
 /*
 *
@@ -141,8 +151,8 @@ function processFunction(Bakery $lock, int $shm_counter, int $process_id)
 * инициализируем алгоритм функцией processFunction с счетчиком количества входа процессов в критическую секцию и количеством процессов
 * выводим состояние системы после заврешения каждого из процессов
 */
-$lock = new Bakery($_SERVER['id_shmop_number'], $_SERVER['id_shmop_choosing'], $_SERVER['id_shmop_state']); 
-processFunction($lock, $_SERVER['id_shmop_counter'], $_SERVER['num_proc']);
+$lock = new Bakery($_SERVER['id_shmop_number'], $_SERVER['id_shmop_choosing'], $_SERVER['id_shmop_state'], $_SERVER['num_proc']); 
+processFunction($lock, $_SERVER['id_shmop_counter'], $_SERVER['id_proc']);
 
 echo generateASCII($lock) . PHP_EOL;
 

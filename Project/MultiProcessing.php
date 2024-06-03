@@ -68,15 +68,15 @@ class MultiProcessing
 
     }
 
-    private function initProcess($script, $num_proc): Process
+    private function initProcess($script, $id_proc): Process
     {
         /* инициализируем процесс
         * передаем в процесс исполняемый скрипт и переменные окружения через $_SERVER
         *
         */
-        $process = new Process(['php', $script], null, ['num_proc' => $num_proc, 'id_shmop_number' => $this->id_shmop_number,
+        $process = new Process(['php', $script], null, ['id_proc' => $id_proc, 'id_shmop_number' => $this->id_shmop_number,
                                                         'id_shmop_choosing' => $this->id_shmop_choosing, 'id_shmop_state' => $this->id_shmop_state,
-                                                        'id_shmop_counter' => $this->id_shmop_counter]);
+                                                        'id_shmop_counter' => $this->id_shmop_counter, 'iter_per_proc' => $this->iter_per_proc, 'num_proc' => $this->num_proc]);
         $process->start(); # запускаем процессы асинхронно
 
         $this->pullProcess[$process->getPid()] = $process; // помещаем процессы в пул процессов
