@@ -85,7 +85,11 @@ $this->updateValFromMem($process_id, 'C', $this->state_id_shmop);
 
 ## Screens
 
-![Проверка состояний процессов каждый 5 секунд]()
+![Проверка состояний процессов каждый 5 секунд](https://github.com/Morody/bakeryAlgorithmPHP/blob/main/img/1.png)
+
+![](https://github.com/Morody/bakeryAlgorithmPHP/blob/main/img/2.png)
+
+![](https://github.com/Morody/bakeryAlgorithmPHP/blob/main/img/3.png)
 
 
-![Процессы завершились. Счетчик входа в критическую секцию валидный, блоки памяти удалены]()
+![Процессы завершились. Счетчик входа в критическую секцию валидный, блоки памяти удалены](https://github.com/Morody/bakeryAlgorithmPHP/blob/main/img/4.png)
