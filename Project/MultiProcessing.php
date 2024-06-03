@@ -10,15 +10,15 @@ class MultiProcessing
     private array $pullProcess;
 
     public int $num_proc = 3; # кол-во процессов
-    public int $iter_per_proc = 10; # итераций в процессе
+    public int $iter_per_proc = 5; # итераций в процессе
 
     /*
         определяем индентификаторы для shmop, чтобы иметь к ним доступ для чтения и записи в распред. память
     */
-    public int $id_shmop_number = 5; 
-    public int $id_shmop_choosing = 6;
-    public int $id_shmop_state = 7;
-    public int $id_shmop_counter = 8;
+    public int $id_shmop_number = 10; 
+    public int $id_shmop_choosing = 11;
+    public int $id_shmop_state = 12;
+    public int $id_shmop_counter = 13;
     
 
 
@@ -64,6 +64,8 @@ class MultiProcessing
             sleep(5);
 
             $this->checkFinish(); // проверяем завершенность процессов
+
+            echo $this->generateASCII() . PHP_EOL;
         }
 
     }
@@ -81,6 +83,25 @@ class MultiProcessing
 
         $this->pullProcess[$process->getPid()] = $process; // помещаем процессы в пул процессов
         return $process;
+    }
+
+    public function readFromMem(int $shm_id)
+    {
+        return explode(",", rtrim(shmop_read(shmop_open($shm_id, 'w', 0644, 50), 0, 50), "\0 "));
+    }
+
+    // вывод состояния всех процессов в системе на данный момент
+    function generateASCII(): string
+    {
+
+        $state_symbols = ['R' => 'Requesting', 'C' => 'In Critical Section', '_' => 'Waiting'];
+        $ascii_art = PHP_EOL . 'System State: ' . PHP_EOL;
+
+        for ($i = 0; $i < $this->num_proc; $i++){
+            $ascii_art .= "Process {$i}: {$state_symbols[$this->readFromMem($this->id_shmop_state)[$i]]} " . " | Number: " . $this->readFromMem($this->id_shmop_number)[$i] . PHP_EOL;
+        }
+
+        return $ascii_art;
     }
 
     private function checkFinish(): void
@@ -115,7 +136,7 @@ class MultiProcessing
         foreach($this->pullProcess as $nameProcess => $process){
             if ($process instanceof Process && $process -> isTerminated())
             {
-                echo '#FINISHED: ' . $nameProcess . ' ' . $process->getOutput() . PHP_EOL; // вывод содержимого каждого из процессов
+                echo '#FINISHED: ' . $nameProcess . PHP_EOL; // вывод содержимого каждого из процессов
                 unset($this->pullProcess[$nameProcess]);
             }
         }

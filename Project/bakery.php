@@ -109,37 +109,18 @@ function criticalSection(int $shm_counter, int $process_id)
     assert($shared_counter == $new_value, "Mutual exclusion violated"); // проверка условия взаимоисключения процессов из крит. секции 
 }
 
-# вывод состояния всех процессов на данный момент
-function generateASCII(Bakery $lock): string
-{
-    $num_proc = $_SERVER['num_proc']; // from Multiprocessing class
-
-    $state_symbols = ['R' => 'Requesting', 'C' => 'In Critical Section', '_' => 'Waiting'];
-    $ascii_art = PHP_EOL . 'System State: ' . PHP_EOL;
-
-    for ($i = 0; $i < $num_proc; $i++){
-        $ascii_art .= "Process {$i}: {$state_symbols[$lock->readFromMem($_SERVER['id_shmop_state'])[$i]]}" . PHP_EOL;
-    }
-
-    return $ascii_art;
-}
-
 # точка распределения задачи на процессы
 function processFunction(Bakery $lock, int $shm_counter, int $process_id)
 {
     $iter_per_proc = $_SERVER['iter_per_proc'];
 
     for ($i = 0; $i < $iter_per_proc; $i++){ # 5 итераций на каждый процесс
-        
-        $lock->lock($process_id); # определяет какой процесс попадет в критическую секцию, блокировка остальных процессов
 
-        echo generateASCII($lock) . PHP_EOL; # вывод состояние процессов на данный момент
+        $lock->lock($process_id); # определяет какой процесс попадет в критическую секцию, блокировка остальных процессов
 
         criticalSection($shm_counter, $process_id); # после выхода из блокировки процесс получает возможность попасть в крит. секцию
 
         $lock->unlock($process_id); # после выхода из крит. секции значения 'choosing' и 'number' обнуляется
-
-        echo generateASCII($lock) . PHP_EOL;  # вывод состояние процессов на данный момент
 
         sleep(1); # пауза между итерациями
     }
@@ -153,7 +134,4 @@ function processFunction(Bakery $lock, int $shm_counter, int $process_id)
 */
 $lock = new Bakery($_SERVER['id_shmop_number'], $_SERVER['id_shmop_choosing'], $_SERVER['id_shmop_state'], $_SERVER['num_proc']); 
 processFunction($lock, $_SERVER['id_shmop_counter'], $_SERVER['id_proc']);
-
-echo generateASCII($lock) . PHP_EOL;
-
 ?>
