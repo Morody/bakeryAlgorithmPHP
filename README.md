@@ -84,7 +84,10 @@ $this->updateValFromMem($process_id, 'C', $this->state_id_shmop);
 * дополнить до размера старой строки строку, которую хотим вместо нее поместить с помощью `str_pad(string $str, $block_size - strlen($old_str))`
 
 ## Screens
+
 Проверка состояний процессов каждые 5 секунд. Всего запущено 3 процесса и 5 итераций в каждом процессе для обновления состояний
+
+
 ![](https://github.com/Morody/bakeryAlgorithmPHP/blob/main/img/1.png)
 
 ![](https://github.com/Morody/bakeryAlgorithmPHP/blob/main/img/2.png)
